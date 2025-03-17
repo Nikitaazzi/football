@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лига чемпионов - Статистика</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #001489, #ffffff);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 20, 137, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .match-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .match-card {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 20px;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .match-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .teams {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .team {
+            text-align: center;
+            width: 45%;
+        }
+
+        .score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #001489;
+        }
+
+        .match-status {
+            text-align: center;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .live {
+            background: #ff4444;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .stats {
+            margin-top: 15px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚽ Лига Чемпионов - Текущие матчи</h1>
+        <div class="match-grid" id="matches"></div>
+    </div>
+
+    <script>
+        const API_KEY = 'f2d607ea25fa4951bc8a3e2a7ac6af60'; // Замените на ваш ключ
+        const API_URL = 'https://api.football-data.org/v4/matches';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch(API_URL, {
+                headers: { 'X-Auth-Token': API_KEY }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                const matchesContainer = document.getElementById('matches');
+                matchesContainer.innerHTML = ''; // Очищаем контейнер
+
+                data.matches.forEach(match => {
+                    const isLive = match.status === 'IN_PLAY';
+                    const time = new Date(match.utcDate).toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'match-card';
+                    matchCard.innerHTML = `
+                        <div class="teams">
+                            <div class="team">
+                                <img src="${match.homeTeam.crest}" alt="${match.homeTeam.name}" 
+                                     style="height: 40px; margin-bottom: 5px;">
+                                <div>${match.homeTeam.shortName}</div>
+                            </div>
+                            <div class="score">
+                                ${match.score.fullTime.home ?? '-'} : ${match.score.fullTime.away ?? '-'}
+                            </div>
+                            <div class="team">
+                                <img src="${match.awayTeam.crest}" alt="${match.awayTeam.name}" 
+                                     style="height: 40px; margin-bottom: 5px;">
+                                <div>${match.awayTeam.shortName}</div>
+                            </div>
+                        </div>
+
+                        <div class="match-status ${isLive ? 'live' : ''}">
+                            ${isLive ? 'LIVE! ⚽' : `Начнётся в ${time}`}
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-item">
+                                <span>Стадия:</span>
+                                <span>${match.stage.replace(/_/g, ' ')}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Группа:</span>
+                                <span>${match.group || 'Плей-офф'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Удары:</span>
+                                <span>${match.stats?.shotsOnTarget?.join(' - ') || 'Н/Д'}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    matchesContainer.appendChild(matchCard);
+                });
+
+                if (data.matches.length === 0) {
+                    matchesContainer.innerHTML = '<p style="text-align: center; color: white;">На этой неделе матчей нет</p>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('matches').innerHTML = `
+                    <p style="color: red; text-align: center;">
+                        Ошибка загрузки данных: ${error.message}<br>
+                        Проверьте API ключ и подключение к интернету
+                    </p>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>
