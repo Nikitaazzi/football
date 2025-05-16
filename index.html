@@ -3,236 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Футбольная статистика</title>
+    <title>Лига чемпионов - Статистика</title>
     <style>
-        /* Добавляем стили для навигации и новых секций */
-        .nav-menu {
-            display: flex;
-            justify-content: center;
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #001489, #ffffff);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 20, 137, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
             margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .match-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
         }
 
-        .nav-button {
-            padding: 10px 20px;
-            background: #001489;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .nav-button.active {
-            background: #ff4444;
-        }
-
-        .section {
-            display: none;
-        }
-
-        .section.active {
-            display: block;
-        }
-
-        .cf-controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .cf-input {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-
-        .cf-button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .news-item {
-            background: rgba(255,255,255,0.9);
+        .match-card {
+            background: rgba(255, 255, 255, 0.95);
             color: #333;
-            padding: 15px;
+            padding: 20px;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .match-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .teams {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .team {
+            text-align: center;
+            width: 45%;
+        }
+
+        .score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #001489;
+        }
+
+        .match-status {
+            text-align: center;
+            font-weight: bold;
             margin: 10px 0;
-            border-radius: 8px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .live {
+            background: #ff4444;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .stats {
+            margin-top: 15px;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🏈 Футбольная статистика</h1>
-        
-        <div class="nav-menu">
-            <button class="nav-button active" data-section="ucl">Лига Чемпионов</button>
-            <button class="nav-button" data-section="cfb">College Football</button>
-        </div>
-
-        <!-- Секция Лиги Чемпионов -->
-        <div class="section active" id="ucl-section">
-            <div class="match-grid" id="matches"></div>
-        </div>
-
-        <!-- Секция College Football -->
-        <div class="section" id="cfb-section">
-            <div class="cf-controls">
-                <button class="cf-button" onclick="loadCFNews()">Latest News</button>
-                
-                <div>
-                    <input type="date" id="cf-date" class="cf-input">
-                    <button class="cf-button" onclick="loadCFScores()">Latest Scores</button>
-                </div>
-
-                <div>
-                    <input type="text" id="game-id" class="cf-input" placeholder="Game ID">
-                    <button class="cf-button" onclick="loadGameInfo()">Game Info</button>
-                </div>
-
-                <div>
-                    <input type="text" id="team-id" class="cf-input" placeholder="Team abbreviation">
-                    <button class="cf-button" onclick="loadTeamInfo()">Team Info</button>
-                </div>
-
-                <button class="cf-button" onclick="loadRankings()">Rankings</button>
-            </div>
-
-            <div id="cf-content"></div>
-        </div>
+        <h1>⚽ Лига Чемпионов - Текущие матчи</h1>
+        <div class="match-grid" id="matches"></div>
     </div>
 
     <script>
-        // Навигация между секциями
-        document.querySelectorAll('.nav-button').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.nav-button, .section').forEach(el => {
-                    el.classList.remove('active');
+        const API_KEY = 'f2d607ea25fa4951bc8a3e2a7ac6af60'; // Замените на ваш ключ
+        const API_URL = 'https://api.football-data.org/v4/matches';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch(API_URL, {
+                headers: { 'X-Auth-Token': API_KEY }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`Ошибка ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                const matchesContainer = document.getElementById('matches');
+                matchesContainer.innerHTML = ''; // Очищаем контейнер
+
+                data.matches.forEach(match => {
+                    const isLive = match.status === 'IN_PLAY';
+                    const time = new Date(match.utcDate).toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'match-card';
+                    matchCard.innerHTML = `
+                        <div class="teams">
+                            <div class="team">
+                                <img src="${match.homeTeam.crest}" alt="${match.homeTeam.name}" 
+                                     style="height: 40px; margin-bottom: 5px;">
+                                <div>${match.homeTeam.shortName}</div>
+                            </div>
+                            <div class="score">
+                                ${match.score.fullTime.home ?? '-'} : ${match.score.fullTime.away ?? '-'}
+                            </div>
+                            <div class="team">
+                                <img src="${match.awayTeam.crest}" alt="${match.awayTeam.name}" 
+                                     style="height: 40px; margin-bottom: 5px;">
+                                <div>${match.awayTeam.shortName}</div>
+                            </div>
+                        </div>
+
+                        <div class="match-status ${isLive ? 'live' : ''}">
+                            ${isLive ? 'LIVE! ⚽' : `Начнётся в ${time}`}
+                        </div>
+                        <a href="https://www.youtube.com/watch?v=IYsKGQ3Mx2g">
+    <button>Live</button>
+</a>
+
+                        <div class="stats">
+                            <div class="stat-item">
+                                <span>Стадия:</span>
+                                <span>${match.stage.replace(/_/g, ' ')}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Группа:</span>
+                                <span>${match.group || 'Плей-офф'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Удары:</span>
+                                <span>${match.stats?.shotsOnTarget?.join(' - ') || 'Н/Д'}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    matchesContainer.appendChild(matchCard);
                 });
-                button.classList.add('active');
-                document.getElementById(`${button.dataset.section}-section`).classList.add('active');
+
+                if (data.matches.length === 0) {
+                    matchesContainer.innerHTML = '<p style="text-align: center; color: white;">На этой неделе матчей нет</p>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('matches').innerHTML = `
+                    <p style="color: red; text-align: center;">
+                        Ошибка загрузки данных: ${error.message}<br>
+                        Проверьте API ключ и подключение к интернету
+                    </p>
+                `;
             });
         });
-
-        // College Football API функции
-        async function loadCFNews() {
-            try {
-                const response = await fetch('http://site.api.espn.com/apis/site/v2/sports/football/college-football/news');
-                const data = await response.json();
-                displayCFData(data.articles.map(article => `
-                    <div class="news-item">
-                        <h3>${article.title}</h3>
-                        <p>${article.description}</p>
-                        <a href="${article.links.web.href}" target="_blank">Read more</a>
-                    </div>
-                `).join(''));
-            } catch (error) {
-                showCFError(error);
-            }
-        }
-
-        async function loadCFScores() {
-            const date = document.getElementById('cf-date').value.replace(/-/g, '') || new Date().toISOString().slice(0,10).replace(/-/g, '');
-            
-            try {
-                const response = await fetch(
-                    `http://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${date}&calendar=blacklist`
-                );
-                const data = await response.json();
-                displayCFData(renderScores(data.events));
-            } catch (error) {
-                showCFError(error);
-            }
-        }
-
-        function renderScores(events) {
-            return events.map(event => `
-                <div class="match-card">
-                    <div class="teams">
-                        <div class="team">${event.competitions[0].competitors[0].team.shortDisplayName}</div>
-                        <div class="score">${event.competitions[0].competitors[0].score} - ${event.competitions[0].competitors[1].score}</div>
-                        <div class="team">${event.competitions[0].competitors[1].team.shortDisplayName}</div>
-                    </div>
-                    <button onclick="loadGameInfo('${event.id}')">Details</button>
-                </div>
-            `).join('');
-        }
-
-        async function loadGameInfo(gameId = document.getElementById('game-id').value) {
-            if (!gameId) return alert('Please enter Game ID');
-            
-            try {
-                const response = await fetch(
-                    `http://site.api.espn.com/apis/site/v2/sports/football/college-football/summary?event=${gameId}`
-                );
-                const data = await response.json();
-                displayCFData(JSON.stringify(data, null, 2));
-            } catch (error) {
-                showCFError(error);
-            }
-        }
-
-        async function loadTeamInfo() {
-            const teamId = document.getElementById('team-id').value;
-            if (!teamId) return alert('Please enter Team abbreviation');
-            
-            try {
-                const response = await fetch(
-                    `http://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/${teamId}`
-                );
-                const data = await response.json();
-                displayCFData(`
-                    <h2>${data.team.displayName}</h2>
-                    <p>Location: ${data.team.location}</p>
-                    <p>Record: ${data.team.record?.items[0]?.summary || 'N/A'}</p>
-                `);
-            } catch (error) {
-                showCFError(error);
-            }
-        }
-
-        async function loadRankings() {
-            try {
-                const response = await fetch(
-                    'http://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings'
-                );
-                const data = await response.json();
-                displayCFData(renderRankings(data.rankings));
-            } catch (error) {
-                showCFError(error);
-            }
-        }
-
-        function renderRankings(rankings) {
-            return rankings.map(rank => `
-                <div class="news-item">
-                    <h3>${rank.name}</h3>
-                    ${rank.ranks.map((team, index) => `
-                        <p>${index + 1}. ${team.team.shortDisplayName} (${team.recordSummary})</p>
-                    `).join('')}
-                </div>
-            `).join('');
-        }
-
-        function displayCFData(content) {
-            document.getElementById('cf-content').innerHTML = content;
-        }
-
-        function showCFError(error) {
-            document.getElementById('cf-content').innerHTML = `
-                <div class="news-item" style="color: red;">
-                    Error: ${error.message}
-                </div>
-            `;
-        }
-
-        // Остальной код для Лиги Чемпионов остается без изменений
-        // ... [ваш существующий код для Лиги Чемпионов] ...
     </script>
 </body>
 </html>
