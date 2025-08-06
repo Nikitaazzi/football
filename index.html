@@ -1,190 +1,107 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!DOCTYPE html><html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лига чемпионов - Статистика</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #001489, #ffffff);
-            color: #fff;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(0, 20, 137, 0.9);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .match-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .match-card {
-            background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            padding: 20px;
-            border-radius: 10px;
-            transition: transform 0.3s ease;
-        }
-
-        .match-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .teams {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .team {
-            text-align: center;
-            width: 45%;
-        }
-
-        .score {
-            font-size: 2em;
-            font-weight: bold;
-            color: #001489;
-        }
-
-        .match-status {
-            text-align: center;
-            font-weight: bold;
-            margin: 10px 0;
-            padding: 5px;
-            border-radius: 5px;
-        }
-
-        .live {
-            background: #ff4444;
-            color: white;
-            animation: pulse 1.5s infinite;
-        }
-
-        .stats {
-            margin-top: 15px;
-            border-top: 1px solid #ddd;
-            padding-top: 10px;
-        }
-
-        .stat-item {
-            display: flex;
-            justify-content: space-between;
-            margin: 5px 0;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Футбольные матчи</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    h1 { text-align: center; }
+    .controls { text-align: center; margin-bottom: 20px; }
+    select, input, button { padding: 10px; margin: 5px; font-size: 16px; }
+    .match { background: white; padding: 15px; margin: 10px auto; border-radius: 8px; max-width: 800px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .match h4 { margin: 0 0 5px; }
+    .match a { color: #1e90ff; text-decoration: none; }
+    .section-title { margin: 10px 0 5px; font-size: 16px; font-weight: bold; }
+    ul { padding-left: 20px; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚽ Лига Чемпионов - Текущие матчи</h1>
-        <div class="match-grid" id="matches"></div>
-    </div>
+  <h1>Футбольные матчи</h1>  <div class="controls">
+    <select id="leagueSelect">
+      <option value="39">Premier League</option>
+      <option value="140">La Liga</option>
+      <option value="78">Bundesliga</option>
+      <option value="135">Serie A</option>
+      <option value="61">Ligue 1</option>
+    </select>
+    <input type="date" id="dateSelect" value="2025-08-06">
+    <button onclick="applyFilters()">Показать</button>
+  </div>  <div id="matches"></div>  <script>
+    const apiKey = 'ВАШ_API_КЛЮЧ_СЮДА'; // ← Вставьте сюда свой ключ
 
-    <script>
-        const API_KEY = 'f2d607ea25fa4951bc8a3e2a7ac6af60'; // Замените на ваш ключ
-        const API_URL = 'https://api.football-data.org/v4/matches';
+    async function loadMatches(leagueId, date) {
+      const url = `https://v3.football.api-sports.io/fixtures?league=${leagueId}&season=2024&date=${date}`;
+      const res = await fetch(url, { headers: { 'x-apisports-key': apiKey } });
+      const data = await res.json();
+      await displayMatches(data.response);
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch(API_URL, {
-                headers: { 'X-Auth-Token': API_KEY }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error(`Ошибка ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                const matchesContainer = document.getElementById('matches');
-                matchesContainer.innerHTML = ''; // Очищаем контейнер
+    async function displayMatches(matches) {
+      const container = document.getElementById('matches');
+      container.innerHTML = '';
+      if (matches.length === 0) {
+        container.innerHTML = '<p style="text-align:center;">Нет матчей на выбранную дату</p>';
+        return;
+      }
 
-                data.matches.forEach(match => {
-                    const isLive = match.status === 'IN_PLAY';
-                    const time = new Date(match.utcDate).toLocaleTimeString('ru-RU', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+      for (const match of matches) {
+        const { teams, fixture } = match;
+        const fixtureId = fixture.id;
 
-                    const matchCard = document.createElement('div');
-                    matchCard.className = 'match-card';
-                    matchCard.innerHTML = `
-                        <div class="teams">
-                            <div class="team">
-                                <img src="${match.homeTeam.crest}" alt="${match.homeTeam.name}" 
-                                     style="height: 40px; margin-bottom: 5px;">
-                                <div>${match.homeTeam.shortName}</div>
-                            </div>
-                            <div class="score">
-                                ${match.score.fullTime.home ?? '-'} : ${match.score.fullTime.away ?? '-'}
-                            </div>
-                            <div class="team">
-                                <img src="${match.awayTeam.crest}" alt="${match.awayTeam.name}" 
-                                     style="height: 40px; margin-bottom: 5px;">
-                                <div>${match.awayTeam.shortName}</div>
-                            </div>
-                        </div>
+        // Параллельные запросы: прогнозы, статистика, составы
+        const [predRes, statsRes, lineupRes] = await Promise.all([
+          fetch(`https://v3.football.api-sports.io/predictions?fixture=${fixtureId}`, { headers: { 'x-apisports-key': apiKey } }),
+          fetch(`https://v3.football.api-sports.io/fixtures/statistics?fixture=${fixtureId}`, { headers: { 'x-apisports-key': apiKey } }),
+          fetch(`https://v3.football.api-sports.io/fixtures/lineups?fixture=${fixtureId}`, { headers: { 'x-apisports-key': apiKey } })
+        ]);
 
-                        <div class="match-status ${isLive ? 'live' : ''}">
-                            ${isLive ? 'LIVE! ⚽' : `Начнётся в ${time}`}
-                        </div>
-                        <a href="https://www.youtube.com/watch?v=IYsKGQ3Mx2g">
-    <button>Live</button>
-</a>
+        const predData = (await predRes.json()).response[0];
+        const statsData = (await statsRes.json()).response;
+        const lineupData = (await lineupRes.json()).response;
 
-                        <div class="stats">
-                            <div class="stat-item">
-                                <span>Стадия:</span>
-                                <span>${match.stage.replace(/_/g, ' ')}</span>
-                            </div>
-                            <div class="stat-item">
-                                <span>Группа:</span>
-                                <span>${match.group || 'Плей-офф'}</span>
-                            </div>
-                            <div class="stat-item">
-                                <span>Удары:</span>
-                                <span>${match.stats?.shotsOnTarget?.join(' - ') || 'Н/Д'}</span>
-                            </div>
-                        </div>
-                    `;
+        // Получение данных по статистике
+        const homeStats = statsData.find(s => s.team.id === teams.home.id)?.statistics || [];
+        const awayStats = statsData.find(s => s.team.id === teams.away.id)?.statistics || [];
+        const possessionHome = homeStats.find(s => s.type === 'Ball Possession')?.value || '-';
+        const possessionAway = awayStats.find(s => s.type === 'Ball Possession')?.value || '-';
+        const shotsHome = homeStats.find(s => s.type === 'Shots on Goal')?.value || '-';
+        const shotsAway = awayStats.find(s => s.type === 'Shots on Goal')?.value || '-';
 
-                    matchesContainer.appendChild(matchCard);
-                });
+        // Получение составов
+        const homeLineup = lineupData.find(l => l.team.id === teams.home.id)?.startXI || [];
+        const awayLineup = lineupData.find(l => l.team.id === teams.away.id)?.startXI || [];
 
-                if (data.matches.length === 0) {
-                    matchesContainer.innerHTML = '<p style="text-align: center; color: white;">На этой неделе матчей нет</p>';
-                }
-            })
-            .catch(error => {
-                document.getElementById('matches').innerHTML = `
-                    <p style="color: red; text-align: center;">
-                        Ошибка загрузки данных: ${error.message}<br>
-                        Проверьте API ключ и подключение к интернету
-                    </p>
-                `;
-            });
-        });
-    </script>
-</body>
+        // Построение HTML
+        const div = document.createElement('div');
+        div.className = 'match';
+        div.innerHTML = `
+          <h4>${teams.home.name} vs ${teams.away.name}</h4>
+          <p>${new Date(fixture.date).toLocaleString()}</p>
+
+          <div class="section-title">Прогноз:</div>
+          <p>Победитель: ${predData.forecast || '—'}<br>
+          Вероятности — Домашняя: ${predData.predictions.home_win_pct}%  Ничья: ${predData.predictions.draws_pct}%  Гостевая: ${predData.predictions.away_win_pct}%</p>
+
+          <div class="section-title">Статистика матча:</div>
+          <p>Владение мячом — ${possessioHome} vs ${possessionAway}<br>
+             Удары в створ — ${shotsHome} vs ${shotsAway}</p>
+
+          <div class="section-title">Составы:</div>
+          <strong>${teams.home.name}</strong>
+          <ul>${homeLineup.map(p => `<li>${p.player.name} (${p.position})</li>`).join('')}</ul>
+          <strong>${teams.away.name}</strong>
+          <ul>${awayLineup.map(p => `<li>${p.player.name} (${p.position})</li>`).join('')}</ul>
+
+          <a href="https://www.youtube.com/results?search_query=${teams.home.name}+vs+${teams.away.name}+live" target="_blank">Смотреть трансляцию</a>
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    function applyFilters() {
+      const leagueId = document.getElementById('leagueSelect').value;
+      const date = document.getElementById('dateSelect').value;
+      loadMatches(leagueId, date);
+    }
+  </script></body>
 </html>
